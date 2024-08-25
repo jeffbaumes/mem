@@ -118,6 +118,7 @@ const start = () => {
   });
 
   started.value = true;
+  focusOnInput();
 };
 
 const stop = () => {
