@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
         </span>
       </div>
     </main>
-    <footer>
+    <footer class="touch-manipulation">
       <div v-for="line in keys" class="flex justify-center w-full mb-1">
         <div style="width: 10%" v-for="key in line">
           <button class="bg-gray-100 w-11/12 rounded-btn flex align-center justify-center py-2" @click="handleKey(key)">{{ key }}</button>
