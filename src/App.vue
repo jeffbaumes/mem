@@ -155,6 +155,10 @@ const stop = () => {
   started.value = false;
 };
 
+const countState = (state: WordState) => {
+  return words.value.reduce((prev, word) => word.state === state ? prev + 1 : prev, 0);
+};
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('popstate', updateTextWithURL);
@@ -169,20 +173,20 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="container mx-auto p-4 flex flex-col h-screen">
+  <div class="container mx-auto p-2 flex flex-col h-screen max-w-prose">
     <header>
       <div class="text-2xl font-bold mb-2">Mem <a class="text-sm" href="https://github.com/jeffbaumes/mem">(GitHub)</a></div>
       <div v-if="!started">
-        <div class="mb-2">
-          <button class="btn btn-sm mr-2" v-if="text.length > 0" @click="start()">Start memorizing</button>
-          <button class="btn btn-sm mr-2" v-if="text.length > 0" @click="updateURLWithText()">Save in URL to bookmark or share</button>
-        </div>
+        <button class="btn btn-sm mr-2 mb-2" v-if="text.length > 0" @click="start()">Start memorizing</button>
+        <button class="btn btn-sm mr-2 mb-2" v-if="text.length > 0" @click="updateURLWithText()">Save in URL to bookmark or share</button>
       </div>
       <div v-else>
-        <div class="mb-2">
-          <button class="btn btn-sm mr-2" @click="stop()">Back</button>
-          <button class="btn btn-sm mr-2" @click="words.forEach((word) => word.state = WordState.Hidden)">Start over</button>
-          <span>{{ words.reduce((prev, word) => word.state === WordState.Correct ? prev + 1 : prev, 0) }} correct of {{ words.length }} words</span>
+        <div>
+          <button class="btn btn-sm mr-2 mb-2" @click="stop()">Back</button>
+          <button class="btn btn-sm mr-2 mb-2" @click="words.forEach((word) => word.state = WordState.Hidden)">Start over</button>
+        </div>
+        <div>{{ countState(WordState.Correct) }} of {{ countState(WordState.Correct) + countState(WordState.Incorrect) }} correct, {{ words.length }} total
+          <span v-if="countState(WordState.Correct) === words.length" class="ml-1">🎉</span>
         </div>
       </div>
     </header>
@@ -204,7 +208,7 @@ onBeforeUnmount(() => {
     <footer class="touch-manipulation">
       <div v-for="line in keys" class="flex justify-center w-full mb-1">
         <div style="width: 10%" v-for="key in line">
-          <button class="bg-gray-100 w-11/12 rounded-btn flex align-center justify-center py-2" @click="handleKey(key)">{{ key }}</button>
+          <button class="bg-gray-100 w-11/12 rounded-btn flex align-center justify-center py-2 font-bold" @click="handleKey(key)">{{ key.toLocaleUpperCase() }}</button>
         </div>
       </div>
     </footer>
