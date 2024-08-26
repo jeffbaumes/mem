@@ -18,6 +18,7 @@ type Word = {
 
 const words = ref<Word[]>([]);
 const text = ref('');
+const title = ref('');
 const started = ref(false);
 const keys = ref<string[]>(['qwertyuiop', 'asdfghjkl', 'zxcvbnm', '←→↑↓']);
 const mainContentRef = ref<HTMLElement | null>(null);
@@ -106,7 +107,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 const updateURLWithText = () => {
   const gzippedText = pako.gzip(text.value);
   const base64Text = btoa(String.fromCharCode(...new Uint8Array(gzippedText)));
-  const newUrl = `${window.location.pathname}?q=${encodeURIComponent(base64Text)}`;
+  const newUrl = `${window.location.pathname}?q=${encodeURIComponent(base64Text)}&title=${encodeURIComponent(title.value)}`;
   if (window.location.href !== window.location.origin + newUrl) {
     window.history.pushState({ path: newUrl }, '', newUrl);
   }
@@ -125,6 +126,10 @@ const updateTextWithURL = () => {
     } catch (e) {
       console.error('Error inflating data:', e);
     }
+  }
+  const titleValue = queryParams.get('title');
+  if (titleValue !== null) {
+    title.value = titleValue;
   }
 };
 
@@ -163,6 +168,9 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('popstate', updateTextWithURL);
   updateTextWithURL();
+  if (text.value.length > 0) {
+    start();
+  }
 });
 
 onBeforeUnmount(() => {
@@ -175,7 +183,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="container mx-auto p-2 flex flex-col h-screen max-w-prose">
     <header>
-      <div class="text-2xl font-bold mb-2">Mem <a class="text-sm" href="https://github.com/jeffbaumes/mem">(GitHub)</a></div>
+      <div class="text-2xl font-bold mb-2">{{ title }}</div>
       <div v-if="!started">
         <button class="btn btn-sm mr-2 mb-2" v-if="text.length > 0" @click="start()">Start memorizing</button>
         <button class="btn btn-sm mr-2 mb-2" v-if="text.length > 0" @click="updateURLWithText()">Save in URL to bookmark or share</button>
@@ -185,14 +193,16 @@ onBeforeUnmount(() => {
           <button class="btn btn-sm mr-2 mb-2" @click="stop()">Back</button>
           <button class="btn btn-sm mr-2 mb-2" @click="words.forEach((word) => word.state = WordState.Hidden)">Start over</button>
         </div>
-        <div>{{ countState(WordState.Correct) }} of {{ countState(WordState.Correct) + countState(WordState.Incorrect) }} correct, {{ words.length }} total
+        <div class="font-bold text-sm mb-2">
+          {{ countState(WordState.Correct) }} of {{ countState(WordState.Correct) + countState(WordState.Incorrect) }} correct, {{ words.length }} total
           <span v-if="countState(WordState.Correct) === words.length" class="ml-1">🎉</span>
         </div>
       </div>
     </header>
     <main class="flex-1 overflow-y-auto" ref="mainContentRef">
       <div v-if="!started">
-        <textarea v-model="text" class="textarea textarea-bordered w-full h-80" placeholder="Enter text to memorize"></textarea>
+        <input v-model="title" class="input input-bordered w-full mb-2" placeholder="Title (optional)">
+        <textarea v-model="text" class="textarea textarea-bordered w-full h-80 text-base" placeholder="Enter text to memorize"></textarea>
       </div>
       <div v-else>
         <span v-if="words.reduce((prev, word) => word.state !== WordState.Hidden ? prev + 1 : prev, 0) > 0" v-for="word, ind in words" :key="ind">
@@ -201,14 +211,14 @@ onBeforeUnmount(() => {
           <br v-if="word.state !== WordState.Hidden && word.paragraphBreak">
         </span>
         <span v-else>
-          <div>Instructions: Type the first letter of each word. Arrow keys advance words or sentences.</div>
+          <div class="italic">Instructions: Type the first letter of each word. Arrow keys advance words or sentences.</div>
         </span>
       </div>
     </main>
     <footer class="touch-manipulation">
       <div v-for="line in keys" class="flex justify-center w-full mb-1">
         <div style="width: 10%" v-for="key in line">
-          <button class="bg-gray-100 w-11/12 rounded-btn flex align-center justify-center py-2 font-bold" @click="handleKey(key)">{{ key.toLocaleUpperCase() }}</button>
+          <button class="bg-gray-100 w-11/12 rounded-btn flex align-center justify-center py-2 font-bold" @click="handleKey(key)">{{ key }}</button>
         </div>
       </div>
     </footer>
