@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import pako from 'pako';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 enum WordState {
@@ -34,6 +35,10 @@ const scrollToBottom = () => {
 };
 
 const handleKey = (key: string) => {
+  const modifierKeys = ['Shift', 'Control', 'Alt', 'Meta'];
+  if (modifierKeys.includes(key)) {
+    return;
+  }
   setTimeout(scrollToBottom, 0);
   let wordIndex = words.value.findIndex((word) => word.state === WordState.Hidden);
   if (wordIndex === -1) {
@@ -95,12 +100,31 @@ const handleKeyDown = (event: KeyboardEvent) => {
     return;
   }
   handleKey(event.key);
+  event.preventDefault();
 };
 
 const updateURLWithText = () => {
-  if (text.value) {
-    const newUrl = `${window.location.pathname}?q=${encodeURIComponent(text.value)}`;
+  const gzippedText = pako.gzip(text.value);
+  const base64Text = btoa(String.fromCharCode(...new Uint8Array(gzippedText)));
+  const newUrl = `${window.location.pathname}?q=${encodeURIComponent(base64Text)}`;
+  if (window.location.href !== window.location.origin + newUrl) {
     window.history.pushState({ path: newUrl }, '', newUrl);
+  }
+};
+
+const updateTextWithURL = () => {
+  const queryParams = new URLSearchParams(window.location.search);
+  const queryValue = queryParams.get('q');
+  if (queryValue !== null) {
+    try {
+      const decodedData = atob(queryValue);
+      const charData = decodedData.split('').map(c => c.charCodeAt(0));
+      const binData = new Uint8Array(charData);
+      const inflatedData = pako.ungzip(binData, { to: 'string' });
+      text.value = inflatedData;
+    } catch (e) {
+      console.error('Error inflating data:', e);
+    }
   }
 };
 
@@ -133,15 +157,13 @@ const stop = () => {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
-  const queryParams = new URLSearchParams(window.location.search);
-  const queryValue = queryParams.get('q');
-  if (queryValue) {
-    text.value = queryValue;
-  }
+  window.addEventListener('popstate', updateTextWithURL);
+  updateTextWithURL();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('popstate', updateTextWithURL);
 });
 
 </script>
@@ -149,17 +171,18 @@ onBeforeUnmount(() => {
 <template>
   <div class="container mx-auto p-4 flex flex-col h-screen">
     <header>
-      <div class="text-2xl font-bold mb-2">Mem</div>
+      <div class="text-2xl font-bold mb-2">Mem <a class="text-sm" href="https://github.com/jeffbaumes/mem">(GitHub)</a></div>
       <div v-if="!started">
         <div class="mb-2">
-          <button class="btn btn-sm mr-2" v-if="text.length > 0" @click="updateURLWithText()">Set permalink</button>
-          <button class="btn btn-sm mr-2" v-if="text.length > 0" @click="start()">Start</button>
+          <button class="btn btn-sm mr-2" v-if="text.length > 0" @click="start()">Start memorizing</button>
+          <button class="btn btn-sm mr-2" v-if="text.length > 0" @click="updateURLWithText()">Save in URL to bookmark or share</button>
         </div>
       </div>
       <div v-else>
         <div class="mb-2">
-          <button class="btn btn-sm mr-2" @click="stop()">Stop</button>
-          <button class="btn btn-sm mr-2" @click="words.forEach((word) => word.state = WordState.Hidden)">Reset</button>
+          <button class="btn btn-sm mr-2" @click="stop()">Back</button>
+          <button class="btn btn-sm mr-2" @click="words.forEach((word) => word.state = WordState.Hidden)">Start over</button>
+          <span>{{ words.reduce((prev, word) => word.state === WordState.Correct ? prev + 1 : prev, 0) }} correct of {{ words.length }} words</span>
         </div>
       </div>
     </header>
@@ -174,7 +197,7 @@ onBeforeUnmount(() => {
           <br v-if="word.state !== WordState.Hidden && word.paragraphBreak">
         </span>
         <span v-else>
-          <div>Type the first letter of each word. Arrow keys advance words or sentences. Esc to reset.</div>
+          <div>Instructions: Type the first letter of each word. Arrow keys advance words or sentences.</div>
         </span>
       </div>
     </main>

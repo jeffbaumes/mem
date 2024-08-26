@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "daisyui": "^4.12.10",
+    "pako": "^2.1.0",
     "vue": "^3.4.37"
   },
   "devDependencies": {
+    "@types/pako": "^2.0.3",
     "@vitejs/plugin-vue": "^5.1.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.41",
